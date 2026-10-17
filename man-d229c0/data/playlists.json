@@ -4,7 +4,32 @@
   {
    "id": "p1",
    "name": "МАН",
-   "tracks": []
+   "tracks": [
+    {
+     "id": "tmvc9p1b2",
+     "title": "переход",
+     "note": "",
+     "v": 1,
+     "updated": "2026-10-17",
+     "file": "audio/tmvc9p1b2-1.mp3"
+    },
+    {
+     "id": "tmvc9l3it",
+     "title": "дефиле(1)",
+     "note": "",
+     "v": 1,
+     "updated": "2026-10-17",
+     "file": "audio/tmvc9l3it-1.mp3"
+    },
+    {
+     "id": "tmvc9kscb",
+     "title": "строители- Всё, что в жизни есть у меня",
+     "note": "хз хз",
+     "v": 1,
+     "updated": "2026-10-17",
+     "file": "audio/tmvc9kscb-1.mp3"
+    }
+   ]
   }
  ]
 }
