@@ -1,0 +1,411 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Фонограммы</title>
+<meta name="theme-color" content="#141214">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Фонограммы">
+<link rel="apple-touch-icon" href="icon-180.png">
+<link rel="manifest" href="manifest.webmanifest">
+<style>
+:root{
+  --bg:#141214; --card:#1e1b1f; --line:#2c282d; --text:#f2eef0; --muted:#9a929b;
+  --accent:#e8b04a; --accent-ink:#1a1408; --new:#e56b6f; --ok:#6fbf8e;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;background:var(--bg);color:var(--text);
+  font:16px/1.35 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
+body{padding:env(safe-area-inset-top) 0 calc(150px + env(safe-area-inset-bottom))}
+button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
+header{padding:18px 16px 8px}
+h1{margin:0;font-size:24px;letter-spacing:.2px}
+.sub{color:var(--muted);font-size:13px;margin-top:4px}
+.tabs{display:flex;gap:8px;overflow-x:auto;padding:8px 16px;scrollbar-width:none}
+.tabs::-webkit-scrollbar{display:none}
+.tab{flex:none;padding:8px 14px;border-radius:999px;background:var(--card);border:1px solid var(--line);font-size:15px}
+.tab.on{background:var(--accent);color:var(--accent-ink);border-color:var(--accent);font-weight:600}
+.bar{display:flex;gap:8px;padding:8px 16px;flex-wrap:wrap}
+.btn{padding:10px 14px;border-radius:12px;background:var(--card);border:1px solid var(--line);font-size:15px}
+.btn.main{background:var(--accent);color:var(--accent-ink);border-color:var(--accent);font-weight:600}
+.btn:disabled{opacity:.45}
+ol{list-style:none;margin:4px 0 0;padding:0 12px}
+li.tr{display:flex;align-items:center;gap:12px;padding:12px 10px;border-radius:14px;margin-bottom:4px}
+li.tr.now{background:var(--card);outline:1px solid var(--accent)}
+.n{flex:none;width:30px;text-align:right;color:var(--muted);font-variant-numeric:tabular-nums;font-size:15px}
+li.now .n{color:var(--accent);font-weight:700}
+.info{flex:1;min-width:0}
+.t{font-size:17px;overflow-wrap:anywhere}
+.meta{display:flex;gap:8px;flex-wrap:wrap;margin-top:3px;font-size:12.5px;color:var(--muted)}
+.badge{color:var(--new);font-weight:600}
+.saved{color:var(--ok)}
+.ed{display:flex;gap:2px;flex:none}
+.ed button{width:36px;height:36px;border-radius:10px;background:var(--card);font-size:16px}
+.empty{color:var(--muted);padding:24px 16px;text-align:center}
+.player{position:fixed;left:0;right:0;bottom:0;background:rgba(30,27,31,.97);
+  border-top:1px solid var(--line);padding:10px 16px calc(12px + env(safe-area-inset-bottom));
+  backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px)}
+.ptitle{font-size:15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ptime{display:flex;justify-content:space-between;font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums}
+input[type=range]{width:100%;accent-color:var(--accent);margin:6px 0 2px}
+.ctrl{display:flex;justify-content:center;align-items:center;gap:22px;margin-top:4px}
+.ctrl button{font-size:24px;width:48px;height:48px;border-radius:50%}
+.ctrl .play{background:var(--accent);color:var(--accent-ink);width:58px;height:58px;font-size:26px}
+.ctrl .rep{font-size:13px;width:auto;padding:0 10px;border-radius:10px;border:1px solid var(--line);height:34px;color:var(--muted)}
+.ctrl .rep.on{color:var(--accent-ink);background:var(--accent);border-color:var(--accent)}
+.panel{margin:8px 16px;padding:14px;border-radius:14px;background:var(--card);border:1px solid var(--line)}
+.panel p{margin:0 0 10px;font-size:14px;color:var(--muted)}
+.panel input{width:100%;padding:10px;border-radius:10px;border:1px solid var(--line);background:var(--bg);color:var(--text);font:inherit;margin-bottom:10px}
+.toast{position:fixed;left:16px;right:16px;bottom:calc(170px + env(safe-area-inset-bottom));
+  background:var(--text);color:var(--bg);padding:12px 14px;border-radius:12px;font-size:14px;
+  opacity:0;transform:translateY(8px);transition:.25s;pointer-events:none;text-align:center}
+.toast.show{opacity:1;transform:none}
+footer{text-align:center;padding:24px 0}
+footer button{color:var(--muted);font-size:13px;opacity:.6}
+</style>
+</head>
+<body>
+<header>
+  <h1 id="title">Фонограммы</h1>
+  <div class="sub" id="status"></div>
+</header>
+<div class="tabs" id="tabs"></div>
+<div class="bar" id="actions"></div>
+<div id="editPanel"></div>
+<ol id="list"></ol>
+<footer><button id="editToggle">✎ редактор</button></footer>
+
+<div class="player">
+  <div class="ptitle" id="ptitle">Нажми на трек</div>
+  <input type="range" id="seek" min="0" max="1000" value="0">
+  <div class="ptime"><span id="tcur">0:00</span><span id="tdur">0:00</span></div>
+  <div class="ctrl">
+    <button id="prev" aria-label="Предыдущий">⏮</button>
+    <button id="play" class="play" aria-label="Играть">▶</button>
+    <button id="next" aria-label="Следующий">⏭</button>
+    <button id="rep" class="rep" aria-label="Повтор трека">повтор</button>
+  </div>
+</div>
+<audio id="audio" preload="auto" playsinline></audio>
+<input type="file" id="file" accept="audio/*,.mp3,.m4a,.wav,.aac" hidden>
+<div class="toast" id="toast"></div>
+
+<script>
+const $ = s => document.querySelector(s);
+const LS = {
+  get(k, d) { try { const v = localStorage.getItem('fono.' + k); return v == null ? d : JSON.parse(v) } catch { return d } },
+  set(k, v) { try { localStorage.setItem('fono.' + k, JSON.stringify(v)) } catch {} },
+  del(k) { try { localStorage.removeItem('fono.' + k) } catch {} }
+};
+const AUDIO_CACHE = 'fono-audio';
+const audio = $('#audio');
+const esc = s => String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const today = () => new Date().toISOString().slice(0, 10);
+const ddmm = d => d ? d.slice(8, 10) + '.' + d.slice(5, 7) : '';
+const fmt = s => isFinite(s) ? Math.floor(s / 60) + ':' + String(Math.floor(s % 60)).padStart(2, '0') : '0:00';
+const abs = f => new URL(f, location.href).href;
+
+let data = null, offline = false;
+let cur = LS.get('pl', 0);
+let playing = null;          // {pl, i, id}
+let repeatOne = false;
+let cached = new Set();
+let seen = LS.get('seen', {});
+// editor
+let edit = false, token = LS.get('token', ''), dirty = false, pending = {}, fileTarget = null, saving = false;
+
+function toast(msg, ms = 2600) {
+  const t = $('#toast'); t.textContent = msg; t.classList.add('show');
+  clearTimeout(toast.h); toast.h = setTimeout(() => t.classList.remove('show'), ms);
+}
+const pl = () => data && data.playlists[Math.min(cur, data.playlists.length - 1)];
+
+async function load() {
+  try {
+    const r = await fetch('data/playlists.json?t=' + Date.now(), { cache: 'no-store' });
+    if (!r.ok) throw 0;
+    data = await r.json(); offline = false; LS.set('data', data);
+  } catch {
+    data = LS.get('data', null); offline = true;
+  }
+  if (!data) { $('#list').innerHTML = '<div class="empty">Нет интернета и нет сохранённого списка.<br>Открой один раз онлайн.</div>'; return }
+  await refreshCached();
+  render();
+}
+
+async function refreshCached() {
+  if (!('caches' in window)) return;
+  try {
+    const c = await caches.open(AUDIO_CACHE);
+    cached = new Set((await c.keys()).map(k => k.url.split('?')[0]));
+  } catch {}
+}
+
+function allFiles() {
+  const s = new Set();
+  data.playlists.forEach(p => p.tracks.forEach(t => s.add(abs(t.file))));
+  return s;
+}
+
+function isNew(t) {
+  if (!t.updated || seen[t.id] === t.file) return false;
+  return (Date.now() - new Date(t.updated)) / 864e5 < 14;
+}
+
+function render() {
+  const p = pl();
+  $('#tabs').innerHTML = data.playlists.length > 1 || edit
+    ? data.playlists.map((q, i) => `<button class="tab${q === p ? ' on' : ''}" data-pl="${i}">${esc(q.name)}</button>`).join('')
+      + (edit ? '<button class="tab" data-act="addpl">＋ список</button>' : '')
+    : '';
+  $('#title').textContent = p ? p.name : 'Фонограммы';
+
+  const files = allFiles();
+  const missing = [...files].filter(f => !cached.has(f)).length;
+  let st = offline ? 'без интернета · играют сохранённые треки' : (p ? p.tracks.length + ' тр.' : '');
+  if (data.updated) st += ' · обновлено ' + ddmm(data.updated);
+  $('#status').textContent = st;
+
+  let acts = '';
+  if (!edit) {
+    acts += `<button class="btn main" data-act="playall">▶ Прогон с начала</button>`;
+    if ('caches' in window) acts += missing
+      ? `<button class="btn" data-act="dl">⬇ В телефон (${missing})</button>`
+      : `<button class="btn" disabled>✓ Всё в телефоне</button>`;
+  } else {
+    acts += `<button class="btn main" data-act="add">＋ трек</button>`;
+    acts += `<button class="btn" data-act="save" ${dirty && !saving ? '' : 'disabled'}>${saving ? 'Сохраняю…' : dirty ? '💾 Сохранить' : 'Сохранено'}</button>`;
+    if (p) acts += `<button class="btn" data-act="renpl">✎ название</button><button class="btn" data-act="delpl">✕ список</button>`;
+  }
+  $('#actions').innerHTML = acts;
+
+  if (!p || !p.tracks.length) { $('#list').innerHTML = `<div class="empty">${edit ? 'Пусто. Нажми «＋ трек».' : 'Треков пока нет.'}</div>`; return }
+  $('#list').innerHTML = p.tracks.map((t, i) => {
+    const now = playing && playing.id === t.id;
+    const meta = [];
+    if (pending[t.id]) meta.push('<span class="badge">не сохранён</span>');
+    else if (isNew(t)) meta.push(`<span class="badge">● новая версия ${ddmm(t.updated)}</span>`);
+    if (t.note) meta.push(esc(t.note));
+    if (!edit && cached.has(abs(t.file))) meta.push('<span class="saved">✓ в телефоне</span>');
+    const ed = edit ? `<div class="ed">
+      <button data-ed="up" data-i="${i}" aria-label="Выше">↑</button>
+      <button data-ed="down" data-i="${i}" aria-label="Ниже">↓</button>
+      <button data-ed="ren" data-i="${i}" aria-label="Название и заметка">✎</button>
+      <button data-ed="rep" data-i="${i}" aria-label="Заменить файл">⟳</button>
+      <button data-ed="del" data-i="${i}" aria-label="Удалить">✕</button></div>` : '';
+    return `<li class="tr${now ? ' now' : ''}" data-i="${i}">
+      <div class="n">${now && !audio.paused ? '▶' : i + 1}</div>
+      <div class="info"><div class="t">${esc(t.title)}</div>${meta.length ? `<div class="meta">${meta.join('<span>·</span>')}</div>` : ''}</div>${ed}</li>`;
+  }).join('');
+}
+
+/* ---------- плеер ---------- */
+function playAt(i) {
+  const p = pl();
+  if (!p || i < 0 || i >= p.tracks.length) { audio.pause(); return }
+  const t = p.tracks[i];
+  if (pending[t.id]) { toast('Сначала сохрани'); return }
+  playing = { pl: cur, i, id: t.id };
+  audio.src = t.file;
+  audio.play().catch(() => {});
+  seen[t.id] = t.file; LS.set('seen', seen);
+  $('#ptitle').textContent = (i + 1) + '. ' + t.title;
+  if ('mediaSession' in navigator) navigator.mediaSession.metadata = new MediaMetadata({ title: t.title, artist: p.name, album: 'Фонограммы' });
+  render();
+}
+function step(d) {
+  if (!playing) return playAt(0);
+  if (playing.pl !== cur) cur = playing.pl;
+  playAt(playing.i + d);
+}
+audio.addEventListener('ended', () => {
+  if (repeatOne) { audio.currentTime = 0; audio.play(); return }
+  const p = data.playlists[playing.pl];
+  if (playing.i + 1 < p.tracks.length) { cur = playing.pl; playAt(playing.i + 1) }
+  else { playing = null; $('#ptitle').textContent = 'Прогон закончен'; render() }
+});
+audio.addEventListener('play', () => { $('#play').textContent = '⏸'; render() });
+audio.addEventListener('pause', () => { $('#play').textContent = '▶'; render() });
+audio.addEventListener('error', () => { if (audio.src) toast(offline ? 'Этот трек не сохранён в телефон' : 'Не получилось загрузить трек') });
+audio.addEventListener('timeupdate', () => {
+  if (!seeking && audio.duration) $('#seek').value = audio.currentTime / audio.duration * 1000;
+  $('#tcur').textContent = fmt(audio.currentTime); $('#tdur').textContent = fmt(audio.duration);
+});
+let seeking = false;
+$('#seek').addEventListener('input', () => { seeking = true; if (audio.duration) $('#tcur').textContent = fmt($('#seek').value / 1000 * audio.duration) });
+$('#seek').addEventListener('change', () => { if (audio.duration) audio.currentTime = $('#seek').value / 1000 * audio.duration; seeking = false });
+$('#play').onclick = () => { if (!playing) return playAt(0); audio.paused ? audio.play() : audio.pause() };
+$('#prev').onclick = () => { if (audio.currentTime > 3) audio.currentTime = 0; else step(-1) };
+$('#next').onclick = () => step(1);
+$('#rep').onclick = () => { repeatOne = !repeatOne; $('#rep').classList.toggle('on', repeatOne) };
+if ('mediaSession' in navigator) {
+  const ms = navigator.mediaSession;
+  ms.setActionHandler('play', () => audio.play());
+  ms.setActionHandler('pause', () => audio.pause());
+  ms.setActionHandler('previoustrack', () => step(-1));
+  ms.setActionHandler('nexttrack', () => step(1));
+  try { ms.setActionHandler('seekto', e => { audio.currentTime = e.seekTime }) } catch {}
+}
+
+/* ---------- офлайн ---------- */
+async function download() {
+  const c = await caches.open(AUDIO_CACHE);
+  const need = [...allFiles()].filter(f => !cached.has(f));
+  let done = 0, fail = 0;
+  for (const f of need) {
+    $('#status').textContent = `Сохраняю в телефон ${done + 1} из ${need.length}…`;
+    try { const r = await fetch(f, { cache: 'no-store' }); if (!r.ok) throw 0; await c.put(f, r); done++ } catch { fail++ }
+  }
+  // убрать старые версии, которых больше нет в списках
+  const keep = allFiles();
+  for (const k of await c.keys()) if (!keep.has(k.url.split('?')[0])) await c.delete(k);
+  await refreshCached(); render();
+  toast(fail ? `Сохранено ${done}, не вышло ${fail} — проверь интернет` : 'Все треки в телефоне, можно без интернета');
+}
+
+/* ---------- редактор (GitHub) ---------- */
+function repoInfo() {
+  const h = location.hostname;
+  if (h.endsWith('.github.io')) return { owner: h.split('.')[0], repo: location.pathname.split('/')[1] || h };
+  return LS.get('repo', null);
+}
+async function api(path, opt = {}) {
+  const R = repoInfo();
+  const r = await fetch(`https://api.github.com/repos/${R.owner}/${R.repo}/contents/${path}`, {
+    method: opt.method || 'GET',
+    headers: { Authorization: 'Bearer ' + token, Accept: 'application/vnd.github+json' },
+    body: opt.body ? JSON.stringify(opt.body) : undefined,
+    cache: 'no-store'
+  });
+  if (r.status === 404 && opt.allow404) return null;
+  if (r.status === 401) throw new Error('Токен не подходит или истёк');
+  if (!r.ok) throw new Error('GitHub ответил ' + r.status);
+  return r.json();
+}
+const encUtf8 = s => { const b = new TextEncoder().encode(s); let bin = ''; for (let i = 0; i < b.length; i += 0x8000) bin += String.fromCharCode.apply(null, b.subarray(i, i + 0x8000)); return btoa(bin) };
+const decUtf8 = b => new TextDecoder().decode(Uint8Array.from(atob(b.replace(/\s/g, '')), c => c.charCodeAt(0)));
+const fileB64 = f => new Promise((ok, no) => { const r = new FileReader(); r.onload = () => ok(r.result.split(',')[1]); r.onerror = no; r.readAsDataURL(f) });
+
+async function enterEdit() {
+  if (!repoInfo() || !token) return showTokenPanel();
+  try {
+    $('#status').textContent = 'Открываю редактор…';
+    const j = await api('data/playlists.json');
+    data = JSON.parse(decUtf8(j.content));
+    edit = true; dirty = false; pending = {};
+    $('#editPanel').innerHTML = '';
+    $('#editToggle').textContent = '✓ выйти из редактора';
+    render();
+  } catch (e) { toast(e.message); showTokenPanel() }
+}
+function exitEdit() {
+  if (dirty && !confirm('Есть несохранённые изменения. Выйти без сохранения?')) return;
+  edit = false; dirty = false; pending = {};
+  $('#editToggle').textContent = '✎ редактор';
+  load();
+}
+function showTokenPanel() {
+  const local = !location.hostname.endsWith('.github.io');
+  $('#editPanel').innerHTML = `<div class="panel">
+    <p>Редактор только для Светы. Вставь токен GitHub — он сохранится в этом телефоне.</p>
+    ${local ? '<input id="repoIn" placeholder="владелец/репозиторий">' : ''}
+    <input id="tokIn" type="password" placeholder="github_pat_…" autocomplete="off">
+    <button class="btn main" id="tokOk">Войти</button>
+    ${token ? '<button class="btn" id="tokForget">Забыть токен</button>' : ''}
+  </div>`;
+  $('#tokOk').onclick = () => {
+    if (local) { const [owner, repo] = ($('#repoIn').value || '').trim().split('/'); LS.set('repo', { owner, repo }) }
+    token = $('#tokIn').value.trim(); LS.set('token', token); enterEdit();
+  };
+  if ($('#tokForget')) $('#tokForget').onclick = () => { token = ''; LS.del('token'); $('#editPanel').innerHTML = ''; toast('Токен удалён из телефона') };
+}
+function touch() { dirty = true; render() }
+const ext = f => ((f.name.match(/\.([a-z0-9]+)$/i) || [])[1] || 'mp3').toLowerCase();
+
+function onFile(f) {
+  if (!f) return;
+  if (f.size > 45e6) { toast('Файл больше 45 МБ — сожми в mp3'); return }
+  const p = pl();
+  if (fileTarget === 'new') {
+    const id = 't' + Date.now().toString(36);
+    const title = prompt('Название трека', f.name.replace(/\.[^.]+$/, '')) || f.name;
+    const t = { id, title, note: '', v: 1, updated: today(), file: `audio/${id}-1.${ext(f)}` };
+    p.tracks.push(t); pending[id] = f;
+    toast('Добавлен в конец — стрелками ↑ поставь на место');
+  } else {
+    const t = p.tracks[fileTarget];
+    t.v = (t.v || 1) + 1; t.updated = today(); t.file = `audio/${t.id}-${t.v}.${ext(f)}`;
+    pending[t.id] = f;
+    toast('Файл заменён — не забудь сохранить');
+  }
+  touch();
+}
+$('#file').addEventListener('change', e => { onFile(e.target.files[0]); e.target.value = '' });
+
+async function save() {
+  saving = true; render();
+  try {
+    const ids = Object.keys(pending);
+    const all = data.playlists.flatMap(p => p.tracks);
+    for (let k = 0; k < ids.length; k++) {
+      const t = all.find(x => x.id === ids[k]);
+      if (!t) continue;
+      $('#status').textContent = `Загружаю ${k + 1} из ${ids.length}: ${t.title}`;
+      await api(t.file, { method: 'PUT', body: { message: 'Трек: ' + t.title, content: await fileB64(pending[t.id]) } });
+      delete pending[t.id];
+    }
+    $('#status').textContent = 'Сохраняю порядок…';
+    data.updated = today();
+    const old = await api('data/playlists.json', { allow404: true });
+    await api('data/playlists.json', { method: 'PUT', body: { message: 'Порядок треков', content: encUtf8(JSON.stringify(data, null, 1)), sha: old && old.sha } });
+    // удалить файлы, которые больше нигде не используются
+    const used = new Set(data.playlists.flatMap(p => p.tracks.map(t => t.file)));
+    const dir = await api('audio', { allow404: true }) || [];
+    for (const f of dir) if (f.type === 'file' && !used.has(f.path))
+      await api(f.path, { method: 'DELETE', body: { message: 'Удалён старый файл', sha: f.sha } });
+    dirty = false; LS.set('data', data);
+    toast('Сохранено. У ребят обновится примерно через минуту', 4000);
+  } catch (e) { toast('Не сохранилось: ' + e.message, 5000) }
+  saving = false; render();
+}
+
+/* ---------- клики ---------- */
+document.addEventListener('click', e => {
+  const b = e.target.closest('[data-pl],[data-act],[data-ed],li.tr');
+  if (!b) return;
+  if (b.dataset.pl != null) { cur = +b.dataset.pl; LS.set('pl', cur); render(); return }
+  const a = b.dataset.act, p = pl();
+  if (a === 'playall') return playAt(0);
+  if (a === 'dl') return download();
+  if (a === 'save') return save();
+  if (a === 'add') { if (!p) return toast('Сначала создай список'); fileTarget = 'new'; return $('#file').click() }
+  if (a === 'addpl') { const n = prompt('Название списка (номер, спектакль)'); if (n) { data.playlists.push({ id: 'p' + Date.now().toString(36), name: n, tracks: [] }); cur = data.playlists.length - 1; touch() } return }
+  if (a === 'renpl') { const n = prompt('Название списка', p.name); if (n) { p.name = n; touch() } return }
+  if (a === 'delpl') { if (confirm(`Удалить список «${p.name}» целиком?`)) { data.playlists.splice(cur, 1); cur = 0; touch() } return }
+  const ed = b.dataset.ed;
+  if (ed) {
+    const i = +b.dataset.i, T = p.tracks;
+    if (ed === 'up' && i > 0) [T[i - 1], T[i]] = [T[i], T[i - 1]];
+    else if (ed === 'down' && i < T.length - 1) [T[i + 1], T[i]] = [T[i], T[i + 1]];
+    else if (ed === 'ren') {
+      const n = prompt('Название', T[i].title); if (n == null) return; T[i].title = n || T[i].title;
+      const note = prompt('Заметка для ребят (можно пусто): например «вступление 8 тактов»', T[i].note || ''); if (note != null) T[i].note = note.trim();
+    }
+    else if (ed === 'rep') { fileTarget = i; return $('#file').click() }
+    else if (ed === 'del') { if (!confirm(`Убрать «${T[i].title}»?`)) return; delete pending[T[i].id]; T.splice(i, 1) }
+    else return;
+    return touch();
+  }
+  if (b.matches('li.tr') && !edit) playAt(+b.dataset.i);
+});
+$('#editToggle').onclick = () => edit ? exitEdit() : ($('#editPanel').innerHTML ? ($('#editPanel').innerHTML = '') : enterEdit());
+addEventListener('beforeunload', e => { if (dirty) { e.preventDefault(); e.returnValue = '' } });
+document.addEventListener('visibilitychange', () => { if (!document.hidden && !edit && !playing) load() });
+
+if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});
+load();
+</script>
+</body>
+</html>
