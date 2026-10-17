@@ -1,5 +1,5 @@
 // Оболочка — сначала сеть, без сети из кэша. Аудио — из кэша «В телефон» с поддержкой Range (нужно iPhone).
-const SHELL = 'fono-shell-v2', AUDIO = 'fono-audio';
+const SHELL = 'fono-shell-v3', AUDIO = 'fono-audio';
 const FILES = ['./', 'index.html', 'app.js', 'app.css', 'manifest.webmanifest', 'icon-180.png', 'icon-192.png', 'icon-512.png'];
 
 self.addEventListener('install', e => {
@@ -15,7 +15,7 @@ self.addEventListener('fetch', e => {
   if (url.pathname.includes('/audio/')) return e.respondWith(audio(req));
   if (url.pathname.endsWith('playlists.json')) return; // свежесть списка решает страница
   e.respondWith(
-    fetch(req).then(r => {
+    fetch(req, { cache: 'no-cache' }).then(r => {
       if (r.ok) { const copy = r.clone(); caches.open(SHELL).then(c => c.put(req, copy)) }
       return r;
     }).catch(() => caches.match(req, { ignoreSearch: true }).then(r => r || Response.error()))

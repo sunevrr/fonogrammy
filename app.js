@@ -9,7 +9,7 @@ document.body.insertAdjacentHTML('afterbegin', `
 <div class="bar" id="actions"></div>
 <div id="editPanel"></div>
 <ol id="list"></ol>
-<footer><button id="editToggle">✎ редактор</button></footer>
+<footer><button id="editToggle">✎ редактор</button><div class="ver">версия ${CFG.v || 1}</div></footer>
 <div class="player">
   <div class="ptitle" id="ptitle">Нажми на трек</div>
   <input type="range" id="seek" min="0" max="1000" value="0">
@@ -227,7 +227,8 @@ async function api(path, opt = {}) {
     cache: 'no-store'
   });
   if (r.status === 404 && opt.allow404) return null;
-  if (r.status === 401) throw new Error('Токен не подходит или истёк');
+  if (r.status === 401) throw new Error('ключ не подходит или истёк');
+  if (r.status === 403 || r.status === 404) throw new Error('у ключа нет доступа к fonogrammy — нужно Contents: Read and write');
   if (!r.ok) throw new Error('GitHub ответил ' + r.status);
   return r.json();
 }
@@ -245,7 +246,11 @@ async function enterEdit() {
     $('#editPanel').innerHTML = '';
     $('#editToggle').textContent = '✓ выйти из редактора';
     render();
-  } catch (e) { toast(e.message); showTokenPanel() }
+  } catch (e) {
+    // редактор не открылся — показать раздел в обычном режиме, а не оставлять старый
+    edit = false; $('#editToggle').textContent = '✎ редактор';
+    await load(); toast('Редактор: ' + e.message, 5000); showTokenPanel();
+  }
 }
 function exitEdit() {
   if (dirty && !confirm('Есть несохранённые изменения. Выйти без сохранения?')) return;
