@@ -1,6 +1,6 @@
 // Оболочка — сначала сеть, без сети из кэша. Аудио — из кэша «В телефон» с поддержкой Range (нужно iPhone).
-const SHELL = 'fono-shell-v1', AUDIO = 'fono-audio';
-const FILES = ['./', 'index.html', 'manifest.webmanifest', 'icon-180.png', 'icon-192.png', 'icon-512.png'];
+const SHELL = 'fono-shell-v2', AUDIO = 'fono-audio';
+const FILES = ['./', 'index.html', 'app.js', 'app.css', 'manifest.webmanifest', 'icon-180.png', 'icon-192.png', 'icon-512.png'];
 
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(SHELL).then(c => c.addAll(FILES)).then(() => self.skipWaiting()));
@@ -18,7 +18,7 @@ self.addEventListener('fetch', e => {
     fetch(req).then(r => {
       if (r.ok) { const copy = r.clone(); caches.open(SHELL).then(c => c.put(req, copy)) }
       return r;
-    }).catch(() => caches.match(req, { ignoreSearch: true }).then(r => r || caches.match('index.html')))
+    }).catch(() => caches.match(req, { ignoreSearch: true }).then(r => r || Response.error()))
   );
 });
 

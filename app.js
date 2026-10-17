@@ -1,0 +1,363 @@
+// Плеер фонограмм. Страница раздела задаёт window.FONO = {root, sections:[{id,name}]},
+// общая страница Светы — ещё admin:true и оба раздела.
+const CFG = window.FONO, SECS = CFG.sections;
+document.body.insertAdjacentHTML('afterbegin', `
+<div class="secs" id="secs"></div>
+<header><h1 id="title">Фонограммы</h1><div class="sub" id="status"></div></header>
+<div id="links"></div>
+<div class="tabs" id="tabs"></div>
+<div class="bar" id="actions"></div>
+<div id="editPanel"></div>
+<ol id="list"></ol>
+<footer><button id="editToggle">✎ редактор</button></footer>
+<div class="player">
+  <div class="ptitle" id="ptitle">Нажми на трек</div>
+  <input type="range" id="seek" min="0" max="1000" value="0">
+  <div class="ptime"><span id="tcur">0:00</span><span id="tdur">0:00</span></div>
+  <div class="ctrl">
+    <button id="prev" aria-label="Предыдущий">⏮</button>
+    <button id="play" class="play" aria-label="Играть">▶</button>
+    <button id="next" aria-label="Следующий">⏭</button>
+    <button id="rep" class="rep" aria-label="Повтор трека">повтор</button>
+  </div>
+</div>
+<audio id="audio" preload="auto" playsinline></audio>
+<input type="file" id="file" accept="audio/*,.mp3,.m4a,.wav,.aac" hidden>
+<div class="toast" id="toast"></div>`);
+
+const $ = s => document.querySelector(s);
+const LS = {
+  get(k, d) { try { const v = localStorage.getItem('fono.' + k); return v == null ? d : JSON.parse(v) } catch { return d } },
+  set(k, v) { try { localStorage.setItem('fono.' + k, JSON.stringify(v)) } catch {} },
+  del(k) { try { localStorage.removeItem('fono.' + k) } catch {} }
+};
+const AUDIO_CACHE = 'fono-audio';
+const audio = $('#audio');
+const esc = s => String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const today = () => new Date().toISOString().slice(0, 10);
+const ddmm = d => d ? d.slice(8, 10) + '.' + d.slice(5, 7) : '';
+const fmt = s => isFinite(s) ? Math.floor(s / 60) + ':' + String(Math.floor(s % 60)).padStart(2, '0') : '0:00';
+const abs = f => new URL(f, location.href).href;
+
+let sec = CFG.admin ? Math.min(LS.get('sec', 0), SECS.length - 1) : 0;
+const S = () => SECS[sec];
+const local = f => (CFG.admin ? S().id + '/' : '') + f;   // адрес файла относительно этой страницы
+const repoPath = f => S().id + '/' + f;                     // путь файла в репозитории
+
+let data = null, offline = false;
+let cur = 0;
+let playing = null;          // {list, i, id, base, name}
+let repeatOne = false;
+let cached = new Set();
+let seen = LS.get('seen', {});
+// редактор
+let edit = false, token = LS.get('token', ''), dirty = false, pending = {}, fileTarget = null, saving = false;
+
+function toast(msg, ms = 2600) {
+  const t = $('#toast'); t.textContent = msg; t.classList.add('show');
+  clearTimeout(toast.h); toast.h = setTimeout(() => t.classList.remove('show'), ms);
+}
+const pl = () => data && data.playlists[Math.min(cur, data.playlists.length - 1)];
+
+async function load() {
+  cur = LS.get('pl.' + S().id, 0);
+  if (CFG.admin && !token) {
+    $('#title').textContent = 'Фонограммы';
+    $('#list').innerHTML = '<div class="empty">Это служебная страница.<br>Открой ссылку своего раздела — её присылает Света.</div>';
+    return;
+  }
+  try {
+    const r = await fetch(local('data/playlists.json') + '?t=' + Date.now(), { cache: 'no-store' });
+    if (!r.ok) throw 0;
+    data = await r.json(); offline = false; LS.set('data.' + S().id, data);
+  } catch {
+    data = LS.get('data.' + S().id, null); offline = true;
+  }
+  if (!data) { $('#list').innerHTML = '<div class="empty">Нет интернета и нет сохранённого списка.<br>Открой один раз онлайн.</div>'; return }
+  await refreshCached();
+  render();
+}
+
+async function refreshCached() {
+  if (!('caches' in window)) return;
+  try {
+    const c = await caches.open(AUDIO_CACHE);
+    cached = new Set((await c.keys()).map(k => k.url.split('?')[0]));
+  } catch {}
+}
+
+function allFiles() {
+  const s = new Set();
+  data.playlists.forEach(p => p.tracks.forEach(t => s.add(abs(local(t.file)))));
+  return s;
+}
+
+function isNew(t) {
+  if (!t.updated || seen[t.id] === t.file) return false;
+  return (Date.now() - new Date(t.updated)) / 864e5 < 14;
+}
+
+function render() {
+  const p = pl();
+  $('#secs').innerHTML = CFG.admin
+    ? SECS.map((s, i) => `<button class="sec${i === sec ? ' on' : ''}" data-sec="${i}">${esc(s.name)}</button>`).join('') : '';
+  $('#links').innerHTML = CFG.admin && !edit
+    ? `<div class="links">Ссылка для группы «${esc(S().name)}»: <b>${esc(abs(S().id + '/'))}</b> <button class="btn" data-act="copy">копировать</button></div>` : '';
+  $('#tabs').innerHTML = data.playlists.length > 1 || edit
+    ? data.playlists.map((q, i) => `<button class="tab${q === p ? ' on' : ''}" data-pl="${i}">${esc(q.name)}</button>`).join('')
+      + (edit ? '<button class="tab" data-act="addpl">＋ список</button>' : '')
+    : '';
+  $('#title').textContent = p ? p.name : S().name;
+  document.title = S().name + ' · фонограммы';
+
+  const files = allFiles();
+  const missing = [...files].filter(f => !cached.has(f)).length;
+  let st = offline ? 'без интернета · играют сохранённые треки' : (p ? p.tracks.length + ' тр.' : '');
+  if (data.updated) st += ' · обновлено ' + ddmm(data.updated);
+  $('#status').textContent = st;
+
+  let acts = '';
+  if (!edit) {
+    acts += `<button class="btn main" data-act="playall">▶ Прогон с начала</button>`;
+    if ('caches' in window) acts += missing
+      ? `<button class="btn" data-act="dl">⬇ В телефон (${missing})</button>`
+      : `<button class="btn" disabled>✓ Всё в телефоне</button>`;
+  } else {
+    acts += `<button class="btn main" data-act="add">＋ трек</button>`;
+    acts += `<button class="btn" data-act="save" ${dirty && !saving ? '' : 'disabled'}>${saving ? 'Сохраняю…' : dirty ? '💾 Сохранить' : 'Сохранено'}</button>`;
+    if (p) acts += `<button class="btn" data-act="renpl">✎ название</button><button class="btn" data-act="delpl">✕ список</button>`;
+  }
+  $('#actions').innerHTML = acts;
+
+  if (!p || !p.tracks.length) { $('#list').innerHTML = `<div class="empty">${edit ? (p ? 'Пусто. Нажми «＋ трек».' : 'Нажми «＋ список».') : 'Треков пока нет.'}</div>`; return }
+  $('#list').innerHTML = p.tracks.map((t, i) => {
+    const now = playing && playing.id === t.id;
+    const meta = [];
+    if (pending[t.id]) meta.push('<span class="badge">не сохранён</span>');
+    else if (isNew(t)) meta.push(`<span class="badge">● новая версия ${ddmm(t.updated)}</span>`);
+    if (t.note) meta.push(esc(t.note));
+    if (!edit && cached.has(abs(local(t.file)))) meta.push('<span class="saved">✓ в телефоне</span>');
+    const ed = edit ? `<div class="ed">
+      <button data-ed="up" data-i="${i}" aria-label="Выше">↑</button>
+      <button data-ed="down" data-i="${i}" aria-label="Ниже">↓</button>
+      <button data-ed="ren" data-i="${i}" aria-label="Название и заметка">✎</button>
+      <button data-ed="rep" data-i="${i}" aria-label="Заменить файл">⟳</button>
+      <button data-ed="del" data-i="${i}" aria-label="Удалить">✕</button></div>` : '';
+    return `<li class="tr${now ? ' now' : ''}" data-i="${i}">
+      <div class="n">${now && !audio.paused ? '▶' : i + 1}</div>
+      <div class="info"><div class="t">${esc(t.title)}</div>${meta.length ? `<div class="meta">${meta.join('<span>·</span>')}</div>` : ''}</div>${ed}</li>`;
+  }).join('');
+}
+
+/* ---------- плеер ---------- */
+// Играет из «снимка» списка, чтобы переключение раздела или вкладки не сбивало прогон.
+function playFrom(list, i, base, name) {
+  if (i < 0 || i >= list.length) { audio.pause(); return }
+  const t = list[i];
+  if (pending[t.id]) { toast('Сначала сохрани'); return }
+  playing = { list, i, id: t.id, base, name };
+  audio.src = base + t.file;
+  audio.play().catch(() => {});
+  seen[t.id] = t.file; LS.set('seen', seen);
+  $('#ptitle').textContent = (i + 1) + '. ' + t.title;
+  if ('mediaSession' in navigator) navigator.mediaSession.metadata = new MediaMetadata({ title: t.title, artist: name, album: 'Фонограммы' });
+  if (data) render();
+}
+function playAt(i) { const p = pl(); if (p) playFrom(p.tracks, i, local(''), p.name) }
+function step(d) {
+  if (!playing) return playAt(0);
+  playFrom(playing.list, playing.i + d, playing.base, playing.name);
+}
+audio.addEventListener('ended', () => {
+  if (repeatOne) { audio.currentTime = 0; audio.play(); return }
+  if (playing.i + 1 < playing.list.length) step(1);
+  else { playing = null; $('#ptitle').textContent = 'Прогон закончен'; if (data) render() }
+});
+audio.addEventListener('play', () => { $('#play').textContent = '⏸'; if (data) render() });
+audio.addEventListener('pause', () => { $('#play').textContent = '▶'; if (data) render() });
+audio.addEventListener('error', () => { if (audio.src) toast(offline ? 'Этот трек не сохранён в телефон' : 'Не получилось загрузить трек') });
+audio.addEventListener('timeupdate', () => {
+  if (!seeking && audio.duration) $('#seek').value = audio.currentTime / audio.duration * 1000;
+  $('#tcur').textContent = fmt(audio.currentTime); $('#tdur').textContent = fmt(audio.duration);
+});
+let seeking = false;
+$('#seek').addEventListener('input', () => { seeking = true; if (audio.duration) $('#tcur').textContent = fmt($('#seek').value / 1000 * audio.duration) });
+$('#seek').addEventListener('change', () => { if (audio.duration) audio.currentTime = $('#seek').value / 1000 * audio.duration; seeking = false });
+$('#play').onclick = () => { if (!playing) return playAt(0); audio.paused ? audio.play() : audio.pause() };
+$('#prev').onclick = () => { if (audio.currentTime > 3) audio.currentTime = 0; else step(-1) };
+$('#next').onclick = () => step(1);
+$('#rep').onclick = () => { repeatOne = !repeatOne; $('#rep').classList.toggle('on', repeatOne) };
+if ('mediaSession' in navigator) {
+  const ms = navigator.mediaSession;
+  ms.setActionHandler('play', () => audio.play());
+  ms.setActionHandler('pause', () => audio.pause());
+  ms.setActionHandler('previoustrack', () => step(-1));
+  ms.setActionHandler('nexttrack', () => step(1));
+  try { ms.setActionHandler('seekto', e => { audio.currentTime = e.seekTime }) } catch {}
+}
+
+/* ---------- офлайн ---------- */
+async function download() {
+  const c = await caches.open(AUDIO_CACHE);
+  const need = [...allFiles()].filter(f => !cached.has(f));
+  let done = 0, fail = 0;
+  for (const f of need) {
+    $('#status').textContent = `Сохраняю в телефон ${done + 1} из ${need.length}…`;
+    try { const r = await fetch(f, { cache: 'no-store' }); if (!r.ok) throw 0; await c.put(f, r); done++ } catch { fail++ }
+  }
+  // убрать старые версии этого раздела, которых больше нет в списках
+  const keep = allFiles(), mine = '/' + S().id + '/';
+  for (const k of await c.keys()) { const u = k.url.split('?')[0]; if (u.includes(mine) && !keep.has(u)) await c.delete(k) }
+  await refreshCached(); render();
+  toast(fail ? `Сохранено ${done}, не вышло ${fail} — проверь интернет` : 'Все треки в телефоне, можно без интернета');
+}
+
+/* ---------- редактор (GitHub) ---------- */
+function repoInfo() {
+  const h = location.hostname;
+  if (h.endsWith('.github.io')) return { owner: h.split('.')[0], repo: location.pathname.split('/')[1] || h };
+  return LS.get('repo', null);
+}
+async function api(path, opt = {}) {
+  const R = repoInfo();
+  const r = await fetch(`https://api.github.com/repos/${R.owner}/${R.repo}/contents/${path}`, {
+    method: opt.method || 'GET',
+    headers: { Authorization: 'Bearer ' + token, Accept: 'application/vnd.github+json' },
+    body: opt.body ? JSON.stringify(opt.body) : undefined,
+    cache: 'no-store'
+  });
+  if (r.status === 404 && opt.allow404) return null;
+  if (r.status === 401) throw new Error('Токен не подходит или истёк');
+  if (!r.ok) throw new Error('GitHub ответил ' + r.status);
+  return r.json();
+}
+const encUtf8 = s => { const b = new TextEncoder().encode(s); let bin = ''; for (let i = 0; i < b.length; i += 0x8000) bin += String.fromCharCode.apply(null, b.subarray(i, i + 0x8000)); return btoa(bin) };
+const decUtf8 = b => new TextDecoder().decode(Uint8Array.from(atob(b.replace(/\s/g, '')), c => c.charCodeAt(0)));
+const fileB64 = f => new Promise((ok, no) => { const r = new FileReader(); r.onload = () => ok(r.result.split(',')[1]); r.onerror = no; r.readAsDataURL(f) });
+
+async function enterEdit() {
+  if (!repoInfo() || !token) return showTokenPanel();
+  try {
+    $('#status').textContent = 'Открываю редактор…';
+    const j = await api(repoPath('data/playlists.json'));
+    data = JSON.parse(decUtf8(j.content));
+    edit = true; dirty = false; pending = {};
+    $('#editPanel').innerHTML = '';
+    $('#editToggle').textContent = '✓ выйти из редактора';
+    render();
+  } catch (e) { toast(e.message); showTokenPanel() }
+}
+function exitEdit() {
+  if (dirty && !confirm('Есть несохранённые изменения. Выйти без сохранения?')) return;
+  edit = false; dirty = false; pending = {};
+  $('#editToggle').textContent = '✎ редактор';
+  load();
+}
+function showTokenPanel() {
+  const local = !location.hostname.endsWith('.github.io');
+  $('#editPanel').innerHTML = `<div class="panel">
+    <p>Редактор только для Светы. Вставь токен GitHub — он сохранится в этом телефоне.</p>
+    ${local ? '<input id="repoIn" placeholder="владелец/репозиторий">' : ''}
+    <input id="tokIn" type="password" placeholder="github_pat_…" autocomplete="off">
+    <button class="btn main" id="tokOk">Войти</button>
+    ${token ? '<button class="btn" id="tokForget">Забыть токен</button>' : ''}
+  </div>`;
+  $('#tokOk').onclick = () => {
+    if (local) { const [owner, repo] = ($('#repoIn').value || '').trim().split('/'); LS.set('repo', { owner, repo }) }
+    token = $('#tokIn').value.trim(); LS.set('token', token); enterEdit();
+  };
+  if ($('#tokForget')) $('#tokForget').onclick = () => { token = ''; LS.del('token'); $('#editPanel').innerHTML = ''; toast('Токен удалён из телефона'); load() };
+}
+function touch() { dirty = true; render() }
+const ext = f => ((f.name.match(/\.([a-z0-9]+)$/i) || [])[1] || 'mp3').toLowerCase();
+
+function onFile(f) {
+  if (!f) return;
+  if (f.size > 45e6) { toast('Файл больше 45 МБ — сожми в mp3'); return }
+  const p = pl();
+  if (fileTarget === 'new') {
+    const id = 't' + Date.now().toString(36);
+    const title = prompt('Название трека', f.name.replace(/\.[^.]+$/, '')) || f.name;
+    const t = { id, title, note: '', v: 1, updated: today(), file: `audio/${id}-1.${ext(f)}` };
+    p.tracks.push(t); pending[id] = f;
+    toast('Добавлен в конец — стрелками ↑ поставь на место');
+  } else {
+    const t = p.tracks[fileTarget];
+    t.v = (t.v || 1) + 1; t.updated = today(); t.file = `audio/${t.id}-${t.v}.${ext(f)}`;
+    pending[t.id] = f;
+    toast('Файл заменён — не забудь сохранить');
+  }
+  touch();
+}
+$('#file').addEventListener('change', e => { onFile(e.target.files[0]); e.target.value = '' });
+
+async function save() {
+  saving = true; render();
+  try {
+    const ids = Object.keys(pending);
+    const all = data.playlists.flatMap(p => p.tracks);
+    for (let k = 0; k < ids.length; k++) {
+      const t = all.find(x => x.id === ids[k]);
+      if (!t) continue;
+      $('#status').textContent = `Загружаю ${k + 1} из ${ids.length}: ${t.title}`;
+      await api(repoPath(t.file), { method: 'PUT', body: { message: `${S().name}: трек ${t.title}`, content: await fileB64(pending[t.id]) } });
+      delete pending[t.id];
+    }
+    $('#status').textContent = 'Сохраняю порядок…';
+    data.updated = today();
+    const jp = repoPath('data/playlists.json');
+    const old = await api(jp, { allow404: true });
+    await api(jp, { method: 'PUT', body: { message: `${S().name}: порядок треков`, content: encUtf8(JSON.stringify(data, null, 1)), sha: old && old.sha } });
+    // удалить файлы раздела, которые больше нигде не используются
+    const used = new Set(data.playlists.flatMap(p => p.tracks.map(t => repoPath(t.file))));
+    const dir = await api(repoPath('audio'), { allow404: true }) || [];
+    for (const f of dir) if (f.type === 'file' && !used.has(f.path))
+      await api(f.path, { method: 'DELETE', body: { message: `${S().name}: удалён старый файл`, sha: f.sha } });
+    dirty = false; LS.set('data.' + S().id, data);
+    toast('Сохранено. У ребят обновится примерно через минуту', 4000);
+  } catch (e) { toast('Не сохранилось: ' + e.message, 5000) }
+  saving = false; render();
+}
+
+/* ---------- клики ---------- */
+document.addEventListener('click', e => {
+  const b = e.target.closest('[data-sec],[data-pl],[data-act],[data-ed],li.tr');
+  if (!b) return;
+  if (b.dataset.sec != null) {
+    if (+b.dataset.sec === sec) return;
+    if (dirty && !confirm('Есть несохранённые изменения. Переключить без сохранения?')) return;
+    sec = +b.dataset.sec; LS.set('sec', sec); dirty = false; pending = {};
+    return edit ? enterEdit() : load();
+  }
+  if (b.dataset.pl != null) { cur = +b.dataset.pl; LS.set('pl.' + S().id, cur); render(); return }
+  const a = b.dataset.act, p = pl();
+  if (a === 'copy') { navigator.clipboard.writeText(abs(S().id + '/')).then(() => toast('Ссылка скопирована'), () => toast('Не скопировалось — выдели вручную')); return }
+  if (a === 'playall') return playAt(0);
+  if (a === 'dl') return download();
+  if (a === 'save') return save();
+  if (a === 'add') { if (!p) return toast('Сначала создай список'); fileTarget = 'new'; return $('#file').click() }
+  if (a === 'addpl') { const n = prompt('Название списка (номер, сцена)'); if (n) { data.playlists.push({ id: 'p' + Date.now().toString(36), name: n, tracks: [] }); cur = data.playlists.length - 1; touch() } return }
+  if (a === 'renpl') { const n = prompt('Название списка', p.name); if (n) { p.name = n; touch() } return }
+  if (a === 'delpl') { if (confirm(`Удалить список «${p.name}» целиком?`)) { data.playlists.splice(cur, 1); cur = 0; touch() } return }
+  const ed = b.dataset.ed;
+  if (ed) {
+    const i = +b.dataset.i, T = p.tracks;
+    if (ed === 'up' && i > 0) [T[i - 1], T[i]] = [T[i], T[i - 1]];
+    else if (ed === 'down' && i < T.length - 1) [T[i + 1], T[i]] = [T[i], T[i + 1]];
+    else if (ed === 'ren') {
+      const n = prompt('Название', T[i].title); if (n == null) return; T[i].title = n || T[i].title;
+      const note = prompt('Заметка для ребят (можно пусто): например «вступление 8 тактов»', T[i].note || ''); if (note != null) T[i].note = note.trim();
+    }
+    else if (ed === 'rep') { fileTarget = i; return $('#file').click() }
+    else if (ed === 'del') { if (!confirm(`Убрать «${T[i].title}»?`)) return; delete pending[T[i].id]; T.splice(i, 1) }
+    else return;
+    return touch();
+  }
+  if (b.matches('li.tr') && !edit) playAt(+b.dataset.i);
+});
+$('#editToggle').onclick = () => edit ? exitEdit() : ($('#editPanel').innerHTML ? ($('#editPanel').innerHTML = '') : enterEdit());
+addEventListener('beforeunload', e => { if (dirty) { e.preventDefault(); e.returnValue = '' } });
+document.addEventListener('visibilitychange', () => { if (!document.hidden && !edit && !playing) load() });
+
+if ('serviceWorker' in navigator) navigator.serviceWorker.register(CFG.root + 'sw.js').catch(() => {});
+load();
