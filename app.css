@@ -57,3 +57,4 @@ footer button{color:var(--muted);font-size:13px;opacity:.6}
 .links{margin:8px 16px;padding:12px 14px;border-radius:14px;border:1px dashed var(--line);font-size:13px;color:var(--muted);overflow-wrap:anywhere}
 .links b{color:var(--text)}
 .ver{color:var(--muted);font-size:11px;opacity:.5;margin-top:6px}
+.panel.err{border-color:var(--new)} .panel.err p{color:var(--text)}

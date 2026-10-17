@@ -124,7 +124,7 @@ function render() {
       : `<button class="btn" disabled>✓ Всё в телефоне</button>`;
   } else {
     acts += `<button class="btn main" data-act="add">＋ трек</button>`;
-    acts += `<button class="btn" data-act="save" ${dirty && !saving ? '' : 'disabled'}>${saving ? 'Сохраняю…' : dirty ? '💾 Сохранить' : 'Сохранено'}</button>`;
+    acts += `<button class="btn" disabled>${saving || (dirty && !saveError) ? '⏳ Отправляю…' : saveError ? '⚠ Не отправлено' : '✓ Всё на сайте'}</button>`;
     if (p) acts += `<button class="btn" data-act="renpl">✎ название</button><button class="btn" data-act="delpl">✕ список</button>`;
   }
   $('#actions').innerHTML = acts;
@@ -133,7 +133,7 @@ function render() {
   $('#list').innerHTML = p.tracks.map((t, i) => {
     const now = playing && playing.id === t.id;
     const meta = [];
-    if (pending[t.id]) meta.push('<span class="badge">не сохранён</span>');
+    if (pending[t.id]) meta.push('<span class="badge">⏳ отправляется</span>');
     else if (isNew(t)) meta.push(`<span class="badge">● новая версия ${ddmm(t.updated)}</span>`);
     if (t.note) meta.push(esc(t.note));
     if (!edit && cached.has(abs(local(t.file)))) meta.push('<span class="saved">✓ в телефоне</span>');
@@ -154,7 +154,7 @@ function render() {
 function playFrom(list, i, base, name) {
   if (i < 0 || i >= list.length) { audio.pause(); return }
   const t = list[i];
-  if (pending[t.id]) { toast('Сначала сохрани'); return }
+  if (pending[t.id]) { toast('Трек ещё отправляется'); return }
   playing = { list, i, id: t.id, base, name };
   audio.src = base + t.file;
   audio.play().catch(() => {});
@@ -225,10 +225,11 @@ async function api(path, opt = {}) {
     headers: { Authorization: 'Bearer ' + token, Accept: 'application/vnd.github+json' },
     body: opt.body ? JSON.stringify(opt.body) : undefined,
     cache: 'no-store'
-  });
+  }).catch(() => { throw new Error('нет связи с GitHub — проверь интернет') });
   if (r.status === 404 && opt.allow404) return null;
   if (r.status === 401) throw new Error('ключ не подходит или истёк');
   if (r.status === 403 || r.status === 404) throw new Error('у ключа нет доступа к fonogrammy — нужно Contents: Read and write');
+  if (r.status === 413 || r.status === 422) throw new Error('файл слишком большой для загрузки, сожми в mp3 (до 20 МБ)');
   if (!r.ok) throw new Error('GitHub ответил ' + r.status);
   return r.json();
 }
@@ -242,7 +243,7 @@ async function enterEdit() {
     $('#status').textContent = 'Открываю редактор…';
     const j = await api(repoPath('data/playlists.json'));
     data = JSON.parse(decUtf8(j.content));
-    edit = true; dirty = false; pending = {};
+    edit = true; dirty = false; pending = {}; saveError = '';
     $('#editPanel').innerHTML = '';
     $('#editToggle').textContent = '✓ выйти из редактора';
     render();
@@ -253,7 +254,7 @@ async function enterEdit() {
   }
 }
 function exitEdit() {
-  if (dirty && !confirm('Есть несохранённые изменения. Выйти без сохранения?')) return;
+  if ((dirty || saving) && !confirm('Ещё не всё отправлено на сайт. Всё равно выйти? Неотправленное пропадёт.')) return;
   edit = false; dirty = false; pending = {};
   $('#editToggle').textContent = '✎ редактор';
   load();
@@ -273,7 +274,20 @@ function showTokenPanel() {
   };
   if ($('#tokForget')) $('#tokForget').onclick = () => { token = ''; LS.del('token'); $('#editPanel').innerHTML = ''; toast('Токен удалён из телефона'); load() };
 }
-function touch() { dirty = true; render() }
+// Каждое изменение отправляется само через пару секунд — отдельной кнопки «сохранить» нет.
+let changeNo = 0, saveTimer = null, saveError = '';
+function touch() {
+  dirty = true; changeNo++; render();
+  clearTimeout(saveTimer); saveTimer = setTimeout(autoSave, 1500);
+}
+async function autoSave() {
+  if (saving) { saveTimer = setTimeout(autoSave, 1000); return }
+  await save();
+}
+function showSaveError() {
+  $('#editPanel').innerHTML = saveError ? `<div class="panel err"><p>Не отправилось на сайт: ${esc(saveError)}</p>
+    <button class="btn main" data-act="save">Повторить</button></div>` : '';
+}
 const ext = f => ((f.name.match(/\.([a-z0-9]+)$/i) || [])[1] || 'mp3').toLowerCase();
 
 function onFile(f) {
@@ -281,47 +295,59 @@ function onFile(f) {
   if (f.size > 45e6) { toast('Файл больше 45 МБ — сожми в mp3'); return }
   const p = pl();
   if (fileTarget === 'new') {
-    const id = 't' + Date.now().toString(36);
+    const id = 't' + Date.now().toString(36) + Math.random().toString(36).slice(2, 5);
     const title = prompt('Название трека', f.name.replace(/\.[^.]+$/, '')) || f.name;
     const t = { id, title, note: '', v: 1, updated: today(), file: `audio/${id}-1.${ext(f)}` };
     p.tracks.push(t); pending[id] = f;
-    toast('Добавлен в конец — стрелками ↑ поставь на место');
+    toast('Добавлен в конец, отправляю… Стрелками ↑ поставь на место');
   } else {
     const t = p.tracks[fileTarget];
+    if (!pending[t.id]) t.prev = t.file;   // пока новый файл грузится, ребята слышат старый
     t.v = (t.v || 1) + 1; t.updated = today(); t.file = `audio/${t.id}-${t.v}.${ext(f)}`;
     pending[t.id] = f;
-    toast('Файл заменён — не забудь сохранить');
+    toast('Файл заменён, отправляю…');
   }
   touch();
 }
 $('#file').addEventListener('change', e => { onFile(e.target.files[0]); e.target.value = '' });
 
 async function save() {
-  saving = true; render();
+  clearTimeout(saveTimer);
+  saving = true; const startNo = changeNo; render();
   try {
     const ids = Object.keys(pending);
-    const all = data.playlists.flatMap(p => p.tracks);
+    const all = () => data.playlists.flatMap(p => p.tracks);
     for (let k = 0; k < ids.length; k++) {
-      const t = all.find(x => x.id === ids[k]);
-      if (!t) continue;
-      $('#status').textContent = `Загружаю ${k + 1} из ${ids.length}: ${t.title}`;
-      await api(repoPath(t.file), { method: 'PUT', body: { message: `${S().name}: трек ${t.title}`, content: await fileB64(pending[t.id]) } });
-      delete pending[t.id];
+      const t = all().find(x => x.id === ids[k]);
+      if (!t || !pending[t.id]) continue;
+      const f = pending[t.id], path = t.file;
+      $('#status').textContent = `Отправляю ${k + 1} из ${ids.length}: ${t.title}`;
+      await api(repoPath(path), { method: 'PUT', body: { message: `${S().name}: трек ${t.title}`, content: await fileB64(f) } });
+      if (pending[t.id] === f) { delete pending[t.id]; delete t.prev }   // за это время файл не заменили ещё раз
     }
     $('#status').textContent = 'Сохраняю порядок…';
     data.updated = today();
+    // в общий список — только то, что уже лежит на сайте
+    const pub = JSON.parse(JSON.stringify(data));
+    pub.playlists.forEach(p => {
+      p.tracks = p.tracks.filter(t => !pending[t.id] || t.prev);
+      p.tracks.forEach(t => { if (pending[t.id]) t.file = t.prev; delete t.prev });
+    });
     const jp = repoPath('data/playlists.json');
     const old = await api(jp, { allow404: true });
-    await api(jp, { method: 'PUT', body: { message: `${S().name}: порядок треков`, content: encUtf8(JSON.stringify(data, null, 1)), sha: old && old.sha } });
+    await api(jp, { method: 'PUT', body: { message: `${S().name}: порядок треков`, content: encUtf8(JSON.stringify(pub, null, 1)), sha: old && old.sha } });
     // удалить файлы раздела, которые больше нигде не используются
-    const used = new Set(data.playlists.flatMap(p => p.tracks.map(t => repoPath(t.file))));
+    const used = new Set(data.playlists.flatMap(p => p.tracks.flatMap(t => [t.file, t.prev].filter(Boolean).map(repoPath))));
     const dir = await api(repoPath('audio'), { allow404: true }) || [];
     for (const f of dir) if (f.type === 'file' && !used.has(f.path))
       await api(f.path, { method: 'DELETE', body: { message: `${S().name}: удалён старый файл`, sha: f.sha } });
-    dirty = false; LS.set('data.' + S().id, data);
-    toast('Сохранено. У ребят обновится примерно через минуту', 4000);
-  } catch (e) { toast('Не сохранилось: ' + e.message, 5000) }
-  saving = false; render();
+    LS.set('data.' + S().id, pub);
+    saveError = '';
+    dirty = changeNo !== startNo || Object.keys(pending).length > 0;
+    if (!dirty) toast('✓ На сайте. У ребят обновится примерно через минуту', 4000);
+  } catch (e) { saveError = e.message }
+  saving = false; showSaveError(); render();
+  if (dirty && !saveError) autoSave();
 }
 
 /* ---------- клики ---------- */
@@ -330,7 +356,7 @@ document.addEventListener('click', e => {
   if (!b) return;
   if (b.dataset.sec != null) {
     if (+b.dataset.sec === sec) return;
-    if (dirty && !confirm('Есть несохранённые изменения. Переключить без сохранения?')) return;
+    if ((dirty || saving) && !confirm('Ещё не всё отправлено на сайт. Переключить? Неотправленное пропадёт.')) return;
     sec = +b.dataset.sec; LS.set('sec', sec); dirty = false; pending = {};
     return edit ? enterEdit() : load();
   }
