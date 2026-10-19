@@ -58,3 +58,4 @@ footer button{color:var(--muted);font-size:13px;opacity:.6}
 .links b{color:var(--text)}
 .ver{color:var(--muted);font-size:11px;opacity:.5;margin-top:6px}
 .panel.err{border-color:var(--new)} .panel.err p{color:var(--text)}
+.ed button.del{color:var(--new);border:1px solid rgba(229,107,111,.35)}

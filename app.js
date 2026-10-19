@@ -119,6 +119,7 @@ function render() {
   let acts = '';
   if (!edit) {
     acts += `<button class="btn main" data-act="playall">▶ Прогон с начала</button>`;
+    if (CFG.admin && token) acts += `<button class="btn" data-act="edit">✎ Редактировать</button>`;
     if ('caches' in window) acts += missing
       ? `<button class="btn" data-act="dl">⬇ В телефон (${missing})</button>`
       : `<button class="btn" disabled>✓ Всё в телефоне</button>`;
@@ -142,7 +143,8 @@ function render() {
       <button data-ed="down" data-i="${i}" aria-label="Ниже">↓</button>
       <button data-ed="ren" data-i="${i}" aria-label="Название и заметка">✎</button>
       <button data-ed="rep" data-i="${i}" aria-label="Заменить файл">⟳</button>
-      <button data-ed="del" data-i="${i}" aria-label="Удалить">✕</button></div>` : '';
+      <button data-ed="del" data-i="${i}" class="del" aria-label="Удалить">🗑</button></div>`
+      : CFG.admin && token ? `<div class="ed"><button data-qdel="${esc(t.id)}" class="del" aria-label="Удалить">🗑</button></div>` : '';
     return `<li class="tr${now ? ' now' : ''}" data-i="${i}">
       <div class="n">${now && !audio.paused ? '▶' : i + 1}</div>
       <div class="info"><div class="t">${esc(t.title)}</div>${meta.length ? `<div class="meta">${meta.join('<span>·</span>')}</div>` : ''}</div>${ed}</li>`;
@@ -276,6 +278,17 @@ function showTokenPanel() {
 }
 // Каждое изменение отправляется само через пару секунд — отдельной кнопки «сохранить» нет.
 let changeNo = 0, saveTimer = null, saveError = '';
+async function quickDelete(id) {
+  const t = pl().tracks.find(x => x.id === id);
+  if (!t || !confirm(`Удалить «${t.title}»? У ребят он тоже пропадёт.`)) return;
+  await enterEdit();
+  if (!edit) return;
+  for (const p of data.playlists) {
+    const i = p.tracks.findIndex(x => x.id === id);
+    if (i >= 0) { p.tracks.splice(i, 1); delete pending[id] }
+  }
+  toast('Удаляю…'); touch();
+}
 function touch() {
   dirty = true; changeNo++; render();
   clearTimeout(saveTimer); saveTimer = setTimeout(autoSave, 1500);
@@ -352,7 +365,7 @@ async function save() {
 
 /* ---------- клики ---------- */
 document.addEventListener('click', e => {
-  const b = e.target.closest('[data-sec],[data-pl],[data-act],[data-ed],li.tr');
+  const b = e.target.closest('[data-sec],[data-pl],[data-act],[data-ed],[data-qdel],li.tr');
   if (!b) return;
   if (b.dataset.sec != null) {
     if (+b.dataset.sec === sec) return;
@@ -364,6 +377,8 @@ document.addEventListener('click', e => {
   const a = b.dataset.act, p = pl();
   if (a === 'copy') { navigator.clipboard.writeText(abs(S().id + '/')).then(() => toast('Ссылка скопирована'), () => toast('Не скопировалось — выдели вручную')); return }
   if (a === 'playall') return playAt(0);
+  if (a === 'edit') return enterEdit();
+  if (b.dataset.qdel) return quickDelete(b.dataset.qdel);
   if (a === 'dl') return download();
   if (a === 'save') return save();
   if (a === 'add') { if (!p) return toast('Сначала создай список'); fileTarget = 'new'; return $('#file').click() }
@@ -380,7 +395,7 @@ document.addEventListener('click', e => {
       const note = prompt('Заметка для ребят (можно пусто): например «вступление 8 тактов»', T[i].note || ''); if (note != null) T[i].note = note.trim();
     }
     else if (ed === 'rep') { fileTarget = i; return $('#file').click() }
-    else if (ed === 'del') { if (!confirm(`Убрать «${T[i].title}»?`)) return; delete pending[T[i].id]; T.splice(i, 1) }
+    else if (ed === 'del') { if (!confirm(`Удалить «${T[i].title}»? У ребят он тоже пропадёт.`)) return; delete pending[T[i].id]; T.splice(i, 1) }
     else return;
     return touch();
   }
