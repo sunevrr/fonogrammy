@@ -1,0 +1,311 @@
+{
+ "updated": "2026-10-21",
+ "playlists": [
+  {
+   "id": "p1",
+   "name": "Тёплый, под рассказ из альбома (№8)",
+   "tracks": [
+    {
+     "id": "tk8mwwq3m",
+     "title": "08а Петров, Вальс (Берегись автомобиля)",
+     "note": "",
+     "v": 1,
+     "updated": "2026-10-21",
+     "file": "audio/tk8mwwq3m-1.mp3",
+     "dur": 237
+    },
+    {
+     "id": "t4u7z8d2y",
+     "title": "08б Свиридов, Вальс (Метель)",
+     "note": "",
+     "v": 1,
+     "updated": "2026-10-21",
+     "file": "audio/t4u7z8d2y-1.mp3",
+     "dur": 234
+    },
+    {
+     "id": "tv5p7qkwm",
+     "title": "08в Петров, Утро (Служебный роман)",
+     "note": "",
+     "v": 1,
+     "updated": "2026-10-21",
+     "file": "audio/tv5p7qkwm-1.mp3",
+     "dur": 165
+    },
+    {
+     "id": "tn4617r5l",
+     "title": "08г Шостакович, Романс (Овод)",
+     "note": "",
+     "v": 1,
+     "updated": "2026-10-21",
+     "file": "audio/tn4617r5l-1.mp3",
+     "dur": 173
+    },
+    {
+     "id": "tgwatuc29",
+     "title": "08д Свиридов, Романс (Метель)",
+     "note": "",
+     "v": 1,
+     "updated": "2026-10-21",
+     "file": "audio/tgwatuc29-1.mp3",
+     "dur": 272
+    }
+   ]
+  },
+  {
+   "id": "p2",
+   "name": "Напряжённый грустный (№17)",
+   "tracks": [
+    {
+     "id": "t8ag22lif",
+     "title": "17а Таривердиев, Мгновения",
+     "note": "",
+     "v": 1,
+     "updated": "2026-10-21",
+     "file": "audio/t8ag22lif-1.mp3",
+     "dur": 179
+    },
+    {
+     "id": "trwpuo7m6",
+     "title": "17б Артемьев, Поход (Сибириада)",
+     "note": "",
+     "v": 1,
+     "updated": "2026-10-21",
+     "file": "audio/trwpuo7m6-1.mp3",
+     "dur": 270
+    },
+    {
+     "id": "tg218af1j",
+     "title": "17в Артемьев, Финал (Свой среди чужих)",
+     "note": "",
+     "v": 1,
+     "updated": "2026-10-21",
+     "file": "audio/tg218af1j-1.mp3",
+     "dur": 214
+    },
+    {
+     "id": "tlyj7an3q",
+     "title": "17г Петров, Дождь (Служебный роман)",
+     "note": "",
+     "v": 1,
+     "updated": "2026-10-21",
+     "file": "audio/tlyj7an3q-1.mp3",
+     "dur": 172
+    },
+    {
+     "id": "ty5q9db8b",
+     "title": "17д Петров, Осень (Служебный роман)",
+     "note": "",
+     "v": 1,
+     "updated": "2026-10-21",
+     "file": "audio/ty5q9db8b-1.mp3",
+     "dur": 124
+    }
+   ]
+  },
+  {
+   "id": "p3",
+   "name": "Живой (№19)",
+   "tracks": [
+    {
+     "id": "t0x5jkcgj",
+     "title": "19а Свиридов, Время, вперёд!",
+     "note": "",
+     "v": 1,
+     "updated": "2026-10-21",
+     "file": "audio/t0x5jkcgj-1.mp3",
+     "dur": 212
+    },
+    {
+     "id": "t668psza8",
+     "title": "19б Зацепин, Бриллиантовая рука (вступление)",
+     "note": "",
+     "v": 1,
+     "updated": "2026-10-21",
+     "file": "audio/t668psza8-1.mp3",
+     "dur": 80
+    },
+    {
+     "id": "ty4uwsiwa",
+     "title": "19в Зацепин, Бриллиантовая рука (тема)",
+     "note": "",
+     "v": 1,
+     "updated": "2026-10-21",
+     "file": "audio/ty4uwsiwa-1.mp3",
+     "dur": 56
+    },
+    {
+     "id": "tc9x6cjgq",
+     "title": "19г Свиридов, Фокстрот и Частушка (Время, вперёд!)",
+     "note": "",
+     "v": 1,
+     "updated": "2026-10-21",
+     "file": "audio/tc9x6cjgq-1.mp3",
+     "dur": 192
+    },
+    {
+     "id": "ta39pjjwh",
+     "title": "19д Петров, Я шагаю по Москве",
+     "note": "",
+     "v": 1,
+     "updated": "2026-10-21",
+     "file": "audio/ta39pjjwh-1.mp3",
+     "dur": 178
+    }
+   ]
+  },
+  {
+   "id": "p4",
+   "name": "Трамвай изнутри",
+   "tracks": [
+    {
+     "id": "ti8ukavlj",
+     "title": "Тр-а старый электротрамвай, 6 мин",
+     "note": "",
+     "v": 1,
+     "updated": "2026-10-21",
+     "file": "audio/ti8ukavlj-1.mp3",
+     "dur": 359
+    },
+    {
+     "id": "t7knhogb1",
+     "title": "Тр-б старый электротрамвай 2",
+     "note": "",
+     "v": 1,
+     "updated": "2026-10-21",
+     "file": "audio/t7knhogb1-1.mp3",
+     "dur": 118
+    },
+    {
+     "id": "tx0q2py8o",
+     "title": "Тр-в Inside Tram",
+     "note": "",
+     "v": 1,
+     "updated": "2026-10-21",
+     "file": "audio/tx0q2py8o-1.mp3",
+     "dur": 29
+    },
+    {
+     "id": "t4y2kf6n4",
+     "title": "Тр-г Tram Ambience",
+     "note": "",
+     "v": 1,
+     "updated": "2026-10-21",
+     "file": "audio/t4y2kf6n4-1.mp3",
+     "dur": 30
+    },
+    {
+     "id": "td9bch5zf",
+     "title": "Тр-д метро, салон (Mixkit)",
+     "note": "",
+     "v": 1,
+     "updated": "2026-10-21",
+     "file": "audio/td9bch5zf-1.mp3",
+     "dur": 32
+    }
+   ]
+  },
+  {
+   "id": "p5",
+   "name": "Затвор и вспышки",
+   "tracks": [
+    {
+     "id": "tclm1yixg",
+     "title": "Ф-а винтажный фотоаппарат",
+     "note": "",
+     "v": 1,
+     "updated": "2026-10-21",
+     "file": "audio/tclm1yixg-1.mp3",
+     "dur": 1
+    },
+    {
+     "id": "tfwzuptnf",
+     "title": "Ф-б классический щелчок",
+     "note": "",
+     "v": 1,
+     "updated": "2026-10-21",
+     "file": "audio/tfwzuptnf-1.mp3",
+     "dur": 1
+    },
+    {
+     "id": "tju5fuz7t",
+     "title": "Ф-в долгая выдержка",
+     "note": "",
+     "v": 1,
+     "updated": "2026-10-21",
+     "file": "audio/tju5fuz7t-1.mp3",
+     "dur": 0
+    },
+    {
+     "id": "tku0yl9ku",
+     "title": "Ф-г объектив",
+     "note": "",
+     "v": 1,
+     "updated": "2026-10-21",
+     "file": "audio/tku0yl9ku-1.mp3",
+     "dur": 1
+    },
+    {
+     "id": "tf4ocpppj",
+     "title": "Ф-д репортёры",
+     "note": "",
+     "v": 1,
+     "updated": "2026-10-21",
+     "file": "audio/tf4ocpppj-1.mp3",
+     "dur": 16
+    }
+   ]
+  },
+  {
+   "id": "p6",
+   "name": "Отсчёт",
+   "tracks": [
+    {
+     "id": "te2jyq2lt",
+     "title": "От-а часы с писком",
+     "note": "",
+     "v": 1,
+     "updated": "2026-10-21",
+     "file": "audio/te2jyq2lt-1.mp3",
+     "dur": 5
+    },
+    {
+     "id": "tvzqujxaa",
+     "title": "От-б тик-так таймер",
+     "note": "",
+     "v": 1,
+     "updated": "2026-10-21",
+     "file": "audio/tvzqujxaa-1.mp3",
+     "dur": 16
+    },
+    {
+     "id": "thcy6moog",
+     "title": "От-в простой",
+     "note": "",
+     "v": 1,
+     "updated": "2026-10-21",
+     "file": "audio/thcy6moog-1.mp3",
+     "dur": 6
+    },
+    {
+     "id": "t0wpk3u52",
+     "title": "От-г старт",
+     "note": "",
+     "v": 1,
+     "updated": "2026-10-21",
+     "file": "audio/t0wpk3u52-1.mp3",
+     "dur": 9
+    },
+    {
+     "id": "tk7nsf5tx",
+     "title": "От-д мелодичный",
+     "note": "",
+     "v": 1,
+     "updated": "2026-10-21",
+     "file": "audio/tk7nsf5tx-1.mp3",
+     "dur": 7
+    }
+   ]
+  }
+ ]
+}
