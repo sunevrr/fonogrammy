@@ -6,6 +6,15 @@
    "name": "Ёлка",
    "tracks": [
     {
+     "id": "twmjjp9ea",
+     "title": "Ritual — Nytt Land",
+     "note": "эп. 1 Пролог · Разбойник",
+     "v": 1,
+     "updated": "2026-10-20",
+     "file": "audio/twmjjp9ea-1.mp3",
+     "dur": 430
+    },
+    {
      "id": "tgbxmrbiy",
      "title": "Сказка. Разлом",
      "note": "эп. 3–4? звезда раскалывается, лес — в сценарии не подписан, проверь",
@@ -13,6 +22,15 @@
      "updated": "2026-10-20",
      "file": "audio/tgbxmrbiy-1.mp3",
      "dur": 412
+    },
+    {
+     "id": "t26ji8pq9",
+     "title": "Не опускай глаз",
+     "note": "эп. 4 · Маша и Алдар",
+     "v": 1,
+     "updated": "2026-10-20",
+     "file": "audio/t26ji8pq9-1.mp3",
+     "dur": 246
     },
     {
      "id": "tf1ss2oxd",
@@ -24,8 +42,17 @@
      "dur": 218
     },
     {
+     "id": "tqmsfcj9x",
+     "title": "Под Новый год — Betsy, Ded M",
+     "note": "эп. 5 · Бабки Ёжки, сразу за ним Six seven",
+     "v": 1,
+     "updated": "2026-10-20",
+     "file": "audio/tqmsfcj9x-1.mp3",
+     "dur": 152
+    },
+    {
      "id": "talk3p7sa",
-     "title": "Под Новый год — Six seven",
+     "title": "Six seven (67)",
      "note": "эп. 5 · Бабки Ёжки",
      "v": 1,
      "updated": "2026-10-20",
@@ -67,6 +94,15 @@
      "updated": "2026-10-20",
      "file": "audio/tt9d56xj9-1.mp3",
      "dur": 98
+    },
+    {
+     "id": "t47hlfp09",
+     "title": "Песня друзей",
+     "note": "эп. 8 · Бременские музыканты",
+     "v": 1,
+     "updated": "2026-10-20",
+     "file": "audio/t47hlfp09-1.mp3",
+     "dur": 132
     },
     {
      "id": "tdhgz6q7g",
