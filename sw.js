@@ -1,5 +1,5 @@
 // Оболочка — сначала сеть, без сети из кэша. Аудио — из кэша «В телефон» с поддержкой Range (нужно iPhone).
-const SHELL = 'fono-shell-v5', AUDIO = 'fono-audio';
+const SHELL = 'fono-shell-v6', AUDIO = 'fono-audio';
 const FILES = ['./', 'index.html', 'app.js', 'app.css', 'manifest.webmanifest', 'icon-180.png', 'icon-192.png', 'icon-512.png'];
 
 self.addEventListener('install', e => {

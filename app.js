@@ -1,23 +1,34 @@
 // Плеер фонограмм. Страница раздела задаёт window.FONO = {root, sections:[{id,name}]},
 // общая страница Светы — ещё admin:true и оба раздела.
 const CFG = window.FONO, SECS = CFG.sections;
+// Значки рисуем сами: символы ▶ ⏮ ⏸ ⏭ iPhone показывает цветными эмодзи.
+const svg = (d, cls = '') => `<svg class="ic ${cls}" viewBox="0 0 24 24" aria-hidden="true">${d}</svg>`;
+const IC = {
+  play: svg('<path d="M8 5.5v13a1 1 0 0 0 1.5.86l10.4-6.5a1 1 0 0 0 0-1.72L9.5 4.64A1 1 0 0 0 8 5.5z"/>'),
+  pause: svg('<rect x="6.5" y="5" width="4" height="14" rx="1.2"/><rect x="13.5" y="5" width="4" height="14" rx="1.2"/>'),
+  prev: svg('<rect x="5" y="5.5" width="2.6" height="13" rx="1"/><path d="M19 6.6v10.8a1 1 0 0 1-1.55.83L9.6 13a1.2 1.2 0 0 1 0-2l7.85-5.23A1 1 0 0 1 19 6.6z"/>'),
+  next: svg('<rect x="16.4" y="5.5" width="2.6" height="13" rx="1"/><path d="M5 6.6v10.8a1 1 0 0 0 1.55.83L14.4 13a1.2 1.2 0 0 0 0-2L6.55 5.77A1 1 0 0 0 5 6.6z"/>'),
+  down: svg('<path d="M12 4v11m0 0l-4.5-4.5M12 15l4.5-4.5M5 19.5h14" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>'),
+  eq: svg('<rect x="4" y="6" width="3.5" height="14" rx="1"/><rect x="10.25" y="6" width="3.5" height="14" rx="1"/><rect x="16.5" y="6" width="3.5" height="14" rx="1"/>', 'eq'),
+};
+const FIRST_TITLE = CFG.admin ? 'Фонограммы' : SECS[0].name;
 document.body.insertAdjacentHTML('afterbegin', `
 <div class="secs" id="secs"></div>
-<header><h1 id="title">Фонограммы</h1><div class="sub" id="status"></div></header>
+<header><h1 id="title">${FIRST_TITLE}</h1><div class="sub" id="status"></div></header>
 <div id="links"></div>
 <div class="tabs" id="tabs"></div>
 <div class="bar" id="actions"></div>
 <div id="editPanel"></div>
-<ol id="list"></ol>
-<footer><button id="editToggle">✎ редактор</button><div class="ver">версия ${CFG.v || 1}</div></footer>
+<ol id="list"><div class="empty">Загружаю треки…</div></ol>
+<footer><button id="editToggle">✎ редактор</button>${CFG.admin ? `<div class="ver">версия ${CFG.v || 1}</div>` : ''}</footer>
 <div class="player">
   <div class="ptitle" id="ptitle">Нажми на трек</div>
   <input type="range" id="seek" min="0" max="1000" value="0">
   <div class="ptime"><span id="tcur">0:00</span><span id="tdur">0:00</span></div>
   <div class="ctrl">
-    <button id="prev" aria-label="Предыдущий">⏮</button>
-    <button id="play" class="play" aria-label="Играть">▶</button>
-    <button id="next" aria-label="Следующий">⏭</button>
+    <button id="prev" aria-label="Предыдущий">${IC.prev}</button>
+    <button id="play" class="play" aria-label="Играть">${IC.play}</button>
+    <button id="next" aria-label="Следующий">${IC.next}</button>
     <button id="rep" class="rep" aria-label="Повтор трека">повтор</button>
   </div>
 </div>
@@ -49,7 +60,7 @@ let cur = 0;
 let playing = null;          // {list, i, id, base, name}
 let repeatOne = false;
 let cached = new Set();
-let seen = LS.get('seen', {});
+let seen = LS.get('seen', null), firstVisit = !seen; seen = seen || {};
 // редактор
 let edit = false, token = LS.get('token', ''), dirty = false, pending = {}, fileTarget = null, saving = false;
 
@@ -74,7 +85,12 @@ async function load() {
     data = LS.get('data.' + S().id, null); offline = true;
   }
   if (!data) { $('#list').innerHTML = '<div class="empty">Нет интернета и нет сохранённого списка.<br>Открой один раз онлайн.</div>'; return }
+  if (firstVisit) {   // в первый раз всё «новое» — значит, ничего не новое
+    data.playlists.forEach(p => p.tracks.forEach(t => { seen[t.id] = t.file }));
+    LS.set('seen', seen); firstVisit = false;
+  }
   await refreshCached();
+  probeDurations();
   render();
 }
 
@@ -90,6 +106,32 @@ function allFiles() {
   const s = new Set();
   data.playlists.forEach(p => p.tracks.forEach(t => s.add(abs(local(t.file)))));
   return s;
+}
+
+// Длительность: из списка (пишется при загрузке), иначе узнаём у файла и запоминаем в телефоне.
+let durs = LS.get('dur', {});
+const durOf = t => t.dur || durs[t.file];
+function fileDuration(src) {
+  return new Promise(res => {
+    const a = new Audio(); a.preload = 'metadata';
+    const done = v => { a.removeAttribute('src'); a.load(); res(v) };
+    a.onloadedmetadata = () => done(isFinite(a.duration) ? Math.floor(a.duration) : 0);
+    a.onerror = () => done(0);
+    setTimeout(() => done(0), 15000);
+    a.src = src;
+  });
+}
+async function probeDurations() {
+  if (probeDurations.busy) return; probeDurations.busy = true;
+  try {
+    const d0 = data, base = local('');   // раздел могут переключить, пока узнаём
+    for (const p of d0.playlists) for (const t of p.tracks) {
+      if (data !== d0) return;
+      if (durOf(t) || pending[t.id]) continue;
+      const d = await fileDuration(base + t.file);
+      if (d) { durs[t.file] = d; LS.set('dur', durs); render() }
+    }
+  } finally { probeDurations.busy = false }
 }
 
 function isNew(t) {
@@ -118,10 +160,10 @@ function render() {
 
   let acts = '';
   if (!edit) {
-    acts += `<button class="btn main" data-act="playall">▶ Прогон с начала</button>`;
+    acts += `<button class="btn main" data-act="playall">${IC.play}Прогон с начала</button>`;
     if (CFG.admin && token) acts += `<button class="btn" data-act="edit">✎ Редактировать</button>`;
-    if ('caches' in window) acts += missing
-      ? `<button class="btn" data-act="dl">⬇ В телефон (${missing})</button>`
+    if ('caches' in window && files.size) acts += missing
+      ? `<button class="btn" data-act="dl">${IC.down}В телефон (${missing})</button>`
       : `<button class="btn" disabled>✓ Всё в телефоне</button>`;
   } else {
     acts += `<button class="btn main" data-act="add">＋ трек</button>`;
@@ -146,8 +188,8 @@ function render() {
       <button data-ed="del" data-i="${i}" class="del" aria-label="Удалить">🗑</button></div>`
       : CFG.admin && token ? `<div class="ed"><button data-qdel="${esc(t.id)}" class="del" aria-label="Удалить">🗑</button></div>` : '';
     return `<li class="tr${now ? ' now' : ''}" data-i="${i}">
-      <div class="n">${now && !audio.paused ? '▶' : i + 1}</div>
-      <div class="info"><div class="t">${esc(t.title)}</div>${meta.length ? `<div class="meta">${meta.join('<span>·</span>')}</div>` : ''}</div>${ed}</li>`;
+      <div class="n">${now && !audio.paused ? IC.eq : i + 1}</div>
+      <div class="info"><div class="t">${esc(t.title)}</div>${meta.length ? `<div class="meta">${meta.join('<span>·</span>')}</div>` : ''}</div>${!edit && durOf(t) ? `<div class="dur">${fmt(durOf(t))}</div>` : ''}${ed}</li>`;
   }).join('');
 }
 
@@ -175,8 +217,8 @@ audio.addEventListener('ended', () => {
   if (playing.i + 1 < playing.list.length) step(1);
   else { playing = null; $('#ptitle').textContent = 'Прогон закончен'; if (data) render() }
 });
-audio.addEventListener('play', () => { $('#play').textContent = '⏸'; if (data) render() });
-audio.addEventListener('pause', () => { $('#play').textContent = '▶'; if (data) render() });
+audio.addEventListener('play', () => { $('#play').innerHTML = IC.pause; if (data) render() });
+audio.addEventListener('pause', () => { $('#play').innerHTML = IC.play; if (data) render() });
 audio.addEventListener('error', () => { if (audio.src) toast(offline ? 'Этот трек не сохранён в телефон' : 'Не получилось загрузить трек') });
 audio.addEventListener('timeupdate', () => {
   if (!seeking && audio.duration) $('#seek').value = audio.currentTime / audio.duration * 1000;
@@ -303,6 +345,11 @@ function showSaveError() {
 }
 const ext = f => ((f.name.match(/\.([a-z0-9]+)$/i) || [])[1] || 'mp3').toLowerCase();
 
+function setDur(t, f) {
+  const u = URL.createObjectURL(f);
+  fileDuration(u).then(d => { URL.revokeObjectURL(u); if (d) { t.dur = d; touch() } });
+}
+
 function onFile(f) {
   if (!f) return;
   if (f.size > 45e6) { toast('Файл больше 45 МБ — сожми в mp3'); return }
@@ -311,13 +358,13 @@ function onFile(f) {
     const id = 't' + Date.now().toString(36) + Math.random().toString(36).slice(2, 5);
     const title = prompt('Название трека', f.name.replace(/\.[^.]+$/, '')) || f.name;
     const t = { id, title, note: '', v: 1, updated: today(), file: `audio/${id}-1.${ext(f)}` };
-    p.tracks.push(t); pending[id] = f;
+    p.tracks.push(t); pending[id] = f; setDur(t, f);
     toast('Добавлен в конец, отправляю… Стрелками ↑ поставь на место');
   } else {
     const t = p.tracks[fileTarget];
     if (!pending[t.id]) t.prev = t.file;   // пока новый файл грузится, ребята слышат старый
     t.v = (t.v || 1) + 1; t.updated = today(); t.file = `audio/${t.id}-${t.v}.${ext(f)}`;
-    pending[t.id] = f;
+    pending[t.id] = f; delete t.dur; setDur(t, f);
     toast('Файл заменён, отправляю…');
   }
   touch();
