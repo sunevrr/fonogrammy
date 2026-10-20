@@ -1,33 +1,126 @@
 {
- "updated": "2026-10-17",
+ "updated": "2026-10-20",
  "playlists": [
   {
    "id": "p1",
    "name": "МАН",
    "tracks": [
     {
-     "id": "tmvc9p1b2",
-     "title": "переход",
-     "note": "",
+     "id": "t5ps8fiwt",
+     "title": "Позывные на открытие",
+     "note": "№1 · до открытия занавеса · пока 01а, вариант не окончательный",
      "v": 1,
-     "updated": "2026-10-17",
-     "file": "audio/tmvc9p1b2-1.mp3"
+     "updated": "2026-10-20",
+     "file": "audio/t5ps8fiwt-1.mp3",
+     "dur": 30
     },
     {
      "id": "tmvc9l3it",
-     "title": "дефиле(1)",
-     "note": "",
+     "title": "Дефиле",
+     "note": "№6 · пролог, после «Стоп, снято!» · черновая сводка",
      "v": 1,
      "updated": "2026-10-17",
-     "file": "audio/tmvc9l3it-1.mp3"
+     "file": "audio/tmvc9l3it-1.mp3",
+     "dur": 263
+    },
+    {
+     "id": "tafx3eium",
+     "title": "Таймер 5…1 и щелчок",
+     "note": "№9 · телефон падает, дети исчезают",
+     "v": 1,
+     "updated": "2026-10-20",
+     "file": "audio/tafx3eium-1.mp3",
+     "dur": 7
+    },
+    {
+     "id": "tmvc9p1b2",
+     "title": "Переход",
+     "note": "№10 · перемещение по фото в рамках",
+     "v": 1,
+     "updated": "2026-10-17",
+     "file": "audio/tmvc9p1b2-1.mp3",
+     "dur": 165
+    },
+    {
+     "id": "toh6z1iuy",
+     "title": "Улица, толпа",
+     "note": "№11 · выходят люди в ретро-костюмах",
+     "v": 1,
+     "updated": "2026-10-20",
+     "file": "audio/toh6z1iuy-1.mp3",
+     "dur": 60
+    },
+    {
+     "id": "t1cf4341z",
+     "title": "Трамвай и город",
+     "note": "№13 · выезжает трамвай",
+     "v": 1,
+     "updated": "2026-10-20",
+     "file": "audio/t1cf4341z-1.mp3",
+     "dur": 23
     },
     {
      "id": "tmvc9kscb",
-     "title": "строители- Всё, что в жизни есть у меня",
-     "note": "хз хз",
+     "title": "Строители — «Всё, что в жизни есть у меня»",
+     "note": "№14 · дети в трамвае, строители с кубами",
      "v": 1,
      "updated": "2026-10-17",
-     "file": "audio/tmvc9kscb-1.mp3"
+     "file": "audio/tmvc9kscb-1.mp3",
+     "dur": 260
+    },
+    {
+     "id": "t7czuyo3r",
+     "title": "Остановка трамвая",
+     "note": "№16 · дети выбегают",
+     "v": 1,
+     "updated": "2026-10-20",
+     "file": "audio/t7czuyo3r-1.mp3",
+     "dur": 17
+    },
+    {
+     "id": "tirdxdvok",
+     "title": "Троллейбус — Артемьев",
+     "note": "№18 · шествие учителей · ещё не удлинён",
+     "v": 1,
+     "updated": "2026-10-20",
+     "file": "audio/tirdxdvok-1.mp3",
+     "dur": 91
+    },
+    {
+     "id": "ttwf0nf2i",
+     "title": "Тиканье, 1 минута",
+     "note": "№20 · дети в будке",
+     "v": 1,
+     "updated": "2026-10-20",
+     "file": "audio/ttwf0nf2i-1.mp3",
+     "dur": 60
+    },
+    {
+     "id": "t6yncd4e8",
+     "title": "Щелчок со вспышкой",
+     "note": "№22 · Вика убегает",
+     "v": 1,
+     "updated": "2026-10-20",
+     "file": "audio/t6yncd4e8-1.mp3",
+     "dur": 2
+    },
+    {
+     "id": "tw5jnkj67",
+     "title": "Переход",
+     "note": "№23 · обратно, рамки на авансцене",
+     "v": 1,
+     "updated": "2026-10-17",
+     "file": "audio/tmvc9p1b2-1.mp3",
+     "dur": 165
+    },
+    {
+     "id": "tlmnpfn73",
+     "title": "Выход ведущих",
+     "note": "№24 · конец театрализации",
+     "v": 1,
+     "updated": "2026-10-20",
+     "file": "audio/tlmnpfn73-1.mp3",
+     "dur": 34
     }
    ]
   }
